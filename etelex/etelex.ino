@@ -2,6 +2,7 @@
 #define MYPORT 134
 #define MYIPFALLBACK 192, 168, 1, 64
 #define MYMACADRESS 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+#define TLN_SERVER "sonnibs.no-ip.org"
 #include <Arduino.h>
 
 
@@ -14,31 +15,20 @@
 
 
 
-
-
-
-
 // Enter a MAC address for your controller below.
 // Newer Ethernet shields have a MAC address printed on a sticker on the shield
 byte mac[] = { MYMACADRESS };
-// if you don't want to use DNS (and reduce your sketch size)
-// use the numeric IP instead of the name for the server:
-//IPAddress server(74,125,232,128);  // numeric IP  (no DNS)
 
-//char static_host[] = "192.168.1.16";
-//char static_host[] = "89.244.167.123";
-//char static_host[] = "i-telex.homepc.it";
 //Set the static IP address to use if the DHCP fails to assign
 IPAddress ip(MYIPFALLBACK);
 
 // Initialize the Ethernet client library
 // with the IP address and port of the server
-// that you want to connect to (port 80 is default for HTTP):
 
 EthernetServer server(MYPORT);
 EthernetClient client;
 
-
+char tlnserver[] = TLN_SERVER;
 
 
 const byte COMMUTATE_PIN = 2; // umpol pin for the relais
@@ -165,36 +155,6 @@ Serial.println();
   currentNumberPos=0;
   attachInterrupt(digitalPinToInterrupt(RECIEVE_PIN), onlinepinchange, CHANGE);
 
-
-
-
-/*
-  PgmPrintln("connecting to static_host");
-  if (client.connect(static_host, 133)) {
-    PgmPrintln("connected to static_host");
-    state=STATE_ONLINE;
-    recieving=true;
-    digitalWrite(COMMUTATE_PIN, HIGH);
-    delay(1000);
-  }else{
-    PgmPrintln("connecting to static_host failed");
-    state=STATE_DISCONNECT;
-  }
-*/
-
-/*
-if(!lookupNumber("0")){//970012 //729512
-  PgmPrintln("fail"); 
-}else{
-  PgmPrintln("ok:");
-  Serial.println(lookup_host);
-  Serial.println(lookup_port);
-  Serial.println(lookup_durchwahl);
-}
-
-  PgmPrint("Free RAM: ");
-  Serial.println(FreeRam()); 
-*/
 }
 
 

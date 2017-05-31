@@ -7,7 +7,6 @@
 char sd_c;
 
 EthernetClient tln_client;
-char tlnserver[] = "sonnibs.no-ip.org";
 
 String lookup_host;
 int lookup_port;

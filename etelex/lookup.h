@@ -7,7 +7,7 @@
 extern String lookup_host;
 extern int lookup_port;
 extern byte lookup_durchwahl;
-
+extern char tlnserver[];
 extern bool lookupNumber(String number);
 
 #endif //ndef __LOOKUP_H__
