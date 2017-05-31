@@ -142,7 +142,7 @@ Serial.println();
 
   PgmPrintln("Welcome to eTelex!");
   PgmPrint("Free RAM: ");
-  Serial.println(FreeRam()); 
+  Serial.println(FreeRam());
 
   state=STATE_RUHEZUSTAND;
 
@@ -172,9 +172,9 @@ void loop() {
           if(digitalRead(RECIEVE_PIN)==0){// immernoch AT
             last_timestamp=millis();
             state=STATE_ANFANGSSIGNAL;
-#ifdef _DEBUG            
+#ifdef _DEBUG
            PgmPrintln("STATE_ANFANGSSIGNAL");
-#endif           
+#endif
           }
         }
       }
@@ -182,7 +182,7 @@ void loop() {
       if (client) {
 #ifdef _DEBUG
         PgmPrintln("server.available");
-#endif        
+#endif
         state=STATE_ONLINE;
         digitalWrite(COMMUTATE_PIN, HIGH);
         delay(1000);
@@ -360,7 +360,7 @@ case STATE_LOOKUP:
 #endif
     state=STATE_DISCONNECT;
   }
-    
+
     break;
     case STATE_ONLINE:
       digitalWrite(COMMUTATE_PIN, HIGH);
@@ -449,12 +449,14 @@ case STATE_LOOKUP:
 
   if (new_char_recieved) {
     char c=baudotToAscii(recieved_char);
-    Serial.print(c);
+
+
 
     if(client.connected()){
 #ifdef itelex
-  if(c!=BAUDOT_CHAR_UNKNOWN && c!=BAUDOT_MODE_BU && c!=BAUDOT_MODE_ZI && c!=0){
+  if(c!=BAUDOT_CHAR_UNKNOWN && c!='\016' && c!='\017' &&c!=BAUDOT_MODE_BU && c!=BAUDOT_MODE_ZI && c!=0){
     client.print(c);
+    Serial.print(c);
   }
 #else
   client.print(c);
@@ -492,7 +494,7 @@ void sendAsciiAsBaudot(char ascii) {
       PgmPrint("Switching mode to ");
       Serial.print(modeswtichcode);
       PgmPrint("\n");
-#endif      
+#endif
     }
     byte_send(baudot);
   }

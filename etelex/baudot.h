@@ -12,6 +12,7 @@
 #ifdef itelex
  const char baudot_bu[] = "#t\ro hnm\nlrgipcvezdbsyfxawj\017uqk\016";
  const char baudot_zi[] = "#5\r9 #,.\n)4#80:=3+@?'6#/-2%\01771(\016";
+//   const char baudot_zi[] = "#5\r9 #,.\n)4#80:=3+#?'6#/-2%\01771(\016";
  #define BAUDOT_CHAR_UNKNOWN 0
 #else
  const char baudot_bu[] = "\000t\ro hnm\nlrgipcvezdbsyfxawj\017uqk\016";
