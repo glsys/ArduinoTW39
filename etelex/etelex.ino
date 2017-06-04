@@ -1,18 +1,11 @@
-#define _DEBUG
-#define MYPORT 134
-#define MYIPFALLBACK 192, 168, 1, 64
-#define MYMACADRESS 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-#define TLN_SERVER "sonnibs.no-ip.org"
 #include <Arduino.h>
+#include "etelex.h"
 
-
-#include <SD.h>
-#include <SPI.h>
 #include <Ethernet.h>
 
 #include "baudot.h"
 #include "lookup.h"
-
+#include "etelex.h"
 
 
 // Enter a MAC address for your controller below.
@@ -55,8 +48,7 @@ byte state;
 #define STATE_CONNECTING  50  // verbindungs timeout -> 90 sonst 100
 #define STATE_BESETZT   90  //ump=1, SSR=1, delay 2000 -> 0
 #define STATE_ONLINE   100  //ump=1, SSR=1, disconnect -> 0, opto==0 <2000s -> 110 sonst -> 0, recieve data via tcp ->120
-#define STATE_RECIEVING   110
-#define STATE_SENDING   120
+#define STATE_LOCALMODE   110
 
 #define STATE_DISCONNECT 200
 byte currentDigit;
@@ -107,13 +99,13 @@ void setup() {
   pinMode(10, OUTPUT);                       // set the SS pin as an output (necessary!)
   digitalWrite(10, HIGH);                    // but turn off the W5100 chip!
 
-
+#ifdef USE_SDCARD
   if (!SD.begin(4)) {
       PgmPrintln("SD initialization failed!");
   }else{
     PgmPrintln("Success SD init.");
   }
-
+#endif 
 
 
   PgmPrintln("...starting Network");
@@ -141,8 +133,10 @@ Serial.println();
 
 
   PgmPrintln("Welcome to eTelex!");
+#ifdef USE_SDCARD
   PgmPrint("Free RAM: ");
   Serial.println(FreeRam());
+#endif
 
   state=STATE_RUHEZUSTAND;
 
@@ -308,7 +302,7 @@ void loop() {
 
 
 case STATE_LOOKUP:
-  if(lookupNumber(number)){//970012 //729512
+  if(lookupNumber(number)){
 #ifdef _DEBUG
     PgmPrint("lookup ok: ");
     Serial.print(lookup_host);
@@ -322,7 +316,7 @@ case STATE_LOOKUP:
   state=STATE_CONNECTING;
   }else{
 #ifdef _DEBUG
-    PgmPrintln("kein impuls");
+    PgmPrintln("nummer nicht gefunden");
     PgmPrintln("STATE_RUHEZUSTAND");
 #endif
     state=STATE_RUHEZUSTAND;
@@ -380,6 +374,20 @@ case STATE_LOOKUP:
         state=STATE_DISCONNECT;
       }
     break;
+
+    case STATE_LOCALMODE:
+      if(!digitalRead(RECIEVE_PIN)){ // wollen wir trennen
+        st_timestamp=millis();
+      }else if(millis()>st_timestamp+3000){
+#ifdef _DEBUG
+        PgmPrintln("We want to disconnect!");
+#endif
+        state=STATE_DISCONNECT;
+      }
+    break;
+
+    
+    
     case STATE_DISCONNECT:
 #ifdef _DEBUG
       PgmPrintln("Disconnecting!");
@@ -391,18 +399,6 @@ case STATE_LOOKUP:
       digitalWrite(COMMUTATE_PIN, LOW);
       delay(1000);
     break;
-
-/*
-#define STATE_WAHLIMPULS  31;//opto==0, warte auf opto==1 -> 32
-#define STATE_WARTE_AUF_NAECHSTEN_WAHLIMPULS  32;//opto==1, warte auf 200ms auf opto==0 -> 31 sonst -> 33
-#define STATE_WAHL_ENDE  34;// nummer zu kurz -> 90 sonst 40
-#define STATE_LOOKUP  40;//nummer nicht gefunden -> 90 sonst 50
-#define STATE_CONNECTING  50;// verbindungs timeout -> 90 sonst 100
-#define STATE_BESETZT   90;//ump=1, SSR=1, delay 2000 -> 0
-#define STATE_ONLINE   100;//ump=1, SSR=1, disconnect -> 0, opto==0 <2000s -> 110 sonst -> 0, recieve data via tcp ->120
-#define STATE_RECIEVING   110;
-#define STATE_SENDING   120;
-*/
 
   }
 
@@ -453,7 +449,7 @@ case STATE_LOOKUP:
 
 
     if(client.connected()){
-#ifdef itelex
+#ifdef ITELEX
   if(c!=BAUDOT_CHAR_UNKNOWN && c!='\016' && c!='\017' &&c!=BAUDOT_MODE_BU && c!=BAUDOT_MODE_ZI && c!=0){
     client.print(c);
     Serial.print(c);
@@ -467,10 +463,16 @@ case STATE_LOOKUP:
 
 
    if (Serial.available() > 0) {
-    if(state==STATE_ONLINE){
+    if(state==STATE_ONLINE||state==STATE_LOCALMODE){
         sendAsciiAsBaudot(Serial.read());
     }else{
-      state=STATE_ONLINE;
+      #ifdef _DEBUG
+      PgmPrintln("Disconnecting!");
+      PgmPrintln("STATE_LOCALMODE");
+      #endif
+      digitalWrite(COMMUTATE_PIN, HIGH);
+      delay(1000);      
+      state=STATE_LOCALMODE;
       recieving=true;
     }
    }
@@ -502,7 +504,7 @@ void sendAsciiAsBaudot(char ascii) {
 
 void byte_send(byte _byte) {
   recieving=false;
-  state=STATE_SENDING;
+//  state=STATE_SENDING;
 
 
   digitalWrite(SEND_PIN, HIGH);
@@ -518,5 +520,5 @@ void byte_send(byte _byte) {
   delay(STOPBIT_DURATION);
 
   recieving=true;
-  state=STATE_ONLINE;
+//  state=STATE_ONLINE;
 } // end byte_send()

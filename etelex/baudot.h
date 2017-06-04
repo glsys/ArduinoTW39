@@ -1,15 +1,14 @@
 #ifndef __BAUDOT_H__
 #define __BAUDOT_H__
 #include <Arduino.h>
-
-#define itelex
+#include "etelex.h"
 
 #define BAUDOT_MODE_UNDEFINED 0
 #define BAUDOT_MODE_BU 31
 #define BAUDOT_MODE_ZI 27
 
 
-#ifdef itelex
+#ifdef ITELEX
  const char baudot_bu[] = "#t\ro hnm\nlrgipcvezdbsyfxawj\017uqk\016";
  const char baudot_zi[] = "#5\r9 #,.\n)4#80:=3+@?'6#/-2%\01771(\016";
 //   const char baudot_zi[] = "#5\r9 #,.\n)4#80:=3+#?'6#/-2%\01771(\016";

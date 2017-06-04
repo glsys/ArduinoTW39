@@ -1,5 +1,5 @@
 #include "baudot.h"
-
+#include "etelex.h"
 
 byte baudot_recieving_mode=BAUDOT_MODE_UNDEFINED;
 byte baudot_sending_mode=BAUDOT_MODE_UNDEFINED;

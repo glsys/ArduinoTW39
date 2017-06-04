@@ -1,6 +1,6 @@
 #include "lookup.h"
-#include <SD.h>
-#include <SPI.h>
+#include "etelex.h"
+
 #include <Ethernet.h>
 //#define _DEBUG
 
@@ -13,6 +13,8 @@ int lookup_port;
 byte lookup_durchwahl;
 //char linebuffer[40];
 String linebuffer;
+
+#ifdef USE_SDCARD
 bool lookupSD(String number){
 #ifdef _DEBUG
   PgmPrintln("lookupTlnSrv");
@@ -127,6 +129,10 @@ File  myFile = SD.open(filename);
 
   return false;
 }
+#endif
+
+
+
 /*
 #Zum Typ:
 #1 ist eine echte i-Telex-Station mit einem Hostnamen
@@ -248,6 +254,25 @@ bool lookupNumber(String number){
   PgmPrint("lookupNumber: ");
   Serial.println(number);
 #endif
+#ifdef USE_SDCARD  
   if(lookupSD(number)) return true;
+#endif
   return lookupTlnSrv(number);
 }
+
+
+
+
+
+
+#ifndef USE_SDCARD
+#ifdef __AVR__
+static void SerialPrint_P(PGM_P str) {
+  for (uint8_t c; (c = pgm_read_byte(str)); str++) Serial.write(c);
+}
+static  void SerialPrintln_P(PGM_P str) {
+  SerialPrint_P(str);
+  Serial.println();
+}
+#endif  // __AVR__
+#endif  //USE_SDCARD
