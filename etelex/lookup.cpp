@@ -1,12 +1,15 @@
 #include "lookup.h"
 #include "etelex.h"
 
-#include <Ethernet.h>
+
 //#define _DEBUG
 
 char sd_c;
-
+#ifdef ESP
+WiFiClient tln_client;
+#else
 EthernetClient tln_client;
+#endif
 
 String lookup_host;
 int lookup_port;
@@ -266,13 +269,11 @@ bool lookupNumber(String number){
 
 
 #ifndef USE_SDCARD
-#ifdef __AVR__
-static void SerialPrint_P(PGM_P str) {
+ void SerialPrint_P(PGM_P str) {
   for (uint8_t c; (c = pgm_read_byte(str)); str++) Serial.write(c);
 }
-static  void SerialPrintln_P(PGM_P str) {
+ void SerialPrintln_P(PGM_P str) {
   SerialPrint_P(str);
   Serial.println();
 }
-#endif  // __AVR__
 #endif  //USE_SDCARD

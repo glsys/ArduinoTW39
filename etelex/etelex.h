@@ -6,10 +6,30 @@
 #define MYMACADRESS 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 #define TLN_SERVER "sonnibs.no-ip.org"
 
-#define USE_SDCARD
+#define MYSSID "wondernet"
+#define MYWIFIPASSWORD "amesads"
+#define MYHOSTNAME "etelex"
+
+
 #define _DEBUG
 #define ITELEX
 
+#ifdef ESP8266
+#define ESP
+#endif
+
+
+#ifdef ESP
+#include <ESP8266WiFi.h>
+
+//const char* ssid = MYSSID;
+//const char* password = MYWIFIPASSWORD;
+
+
+#else
+#include <Ethernet.h>
+#define USE_SDCARD
+#endif
 
 
 #ifdef USE_SDCARD

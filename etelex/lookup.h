@@ -2,7 +2,7 @@
 #define __LOOKUP_H__
 #include <Arduino.h>
 
-#include <Ethernet.h>
+
 
 extern String lookup_host;
 extern int lookup_port;

@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "etelex.h"
 
-#include <Ethernet.h>
+
 
 #include "baudot.h"
 #include "lookup.h"
@@ -12,14 +12,18 @@
 // Newer Ethernet shields have a MAC address printed on a sticker on the shield
 byte mac[] = { MYMACADRESS };
 
+
+#ifdef ESP
+WiFiServer server(MYPORT);
+WiFiClient client;
+#else
 //Set the static IP address to use if the DHCP fails to assign
 IPAddress ip(MYIPFALLBACK);
-
 // Initialize the Ethernet client library
 // with the IP address and port of the server
-
 EthernetServer server(MYPORT);
 EthernetClient client;
+#endif
 
 char tlnserver[] = TLN_SERVER;
 
@@ -96,10 +100,10 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
+#ifdef USE_SDCARD
   pinMode(10, OUTPUT);                       // set the SS pin as an output (necessary!)
   digitalWrite(10, HIGH);                    // but turn off the W5100 chip!
 
-#ifdef USE_SDCARD
   if (!SD.begin(4)) {
       PgmPrintln("SD initialization failed!");
   }else{
@@ -110,7 +114,20 @@ void setup() {
 
   PgmPrintln("...starting Network");
 
+#ifdef ESP
+WiFi.mode(WIFI_STA);
+WiFi.hostname(MYHOSTNAME);      // DHCP Hostname (useful for finding device for static lease)
+//WiFi.config(staticIP, gateway, subnet);  // (DNS not required)
+WiFi.begin(MYSSID, MYWIFIPASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    PgmPrint(".");
+  }
+  PgmPrintln("");
+  PgmPrint("My IP address: ");
+  Serial.println(WiFi.localIP());
 
+#else
    if (Ethernet.begin(mac) == 0) {
     PgmPrintln("Failed to configure Ethernet using DHCP");
     // try to congifure using IP address instead of DHCP:
@@ -125,7 +142,7 @@ void setup() {
     PgmPrint(".");
   }
 Serial.println();
-
+#endif
 
 
 
@@ -482,7 +499,9 @@ case STATE_LOOKUP:
         sendAsciiAsBaudot(c);
         Serial.print(c);
   }
+#ifndef ESP
   Ethernet.maintain();
+#endif
 }
 
 void sendAsciiAsBaudot(char ascii) {
