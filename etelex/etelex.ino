@@ -27,10 +27,15 @@ EthernetClient client;
 
 char tlnserver[] = TLN_SERVER;
 
-
+#ifdef ESP
+const byte COMMUTATE_PIN = 16; // umpol pin for the relais
+const byte RECIEVE_PIN = 13;     // recieve Pin when online
+const byte SEND_PIN = 12; // send pin for the Mosfet
+#else
 const byte COMMUTATE_PIN = 2; // umpol pin for the relais
 const byte RECIEVE_PIN = 3;     // recieve Pin when online
 const byte SEND_PIN = 5; // send pin for the Mosfet
+#endif
 
 const int DATABIT_DURATION = 20; //milliseconds
 const int STARTBIT_DURATION = 20; // milliseconds
@@ -50,7 +55,7 @@ byte state;
 #define STATE_LOOKUP  40  //nummer nicht gefunden -> 90 sonst 50
 
 #define STATE_CONNECTING  50  // verbindungs timeout -> 90 sonst 100
-#define STATE_BESETZT   90  //ump=1, SSR=1, delay 2000 -> 0
+#define STATE_BUSY   90  //ump=1, SSR=1, delay 2000 -> 0
 #define STATE_ONLINE   100  //ump=1, SSR=1, disconnect -> 0, opto==0 <2000s -> 110 sonst -> 0, recieve data via tcp ->120
 #define STATE_LOCALMODE   110
 
@@ -63,29 +68,32 @@ char number[NUMBER_BUFFER_LENGTH];
 byte recieve_buf; // recieve buffer
 byte recieved_char; //
 
-boolean recieving=false;
 
 boolean debugTimings=false;
 boolean new_char_recieved=false;
 
+unsigned long st_timestamp;
 
 
 //unsigned long pin_val;
-unsigned int bit_pos=0; // aktuelles bit in rcve, startbit=1
+volatile unsigned int bit_pos=0; // aktuelles bit in rcve, startbit=1
+volatile boolean recieving=false;
+volatile unsigned long last_timestamp;
 
-unsigned long last_timestamp;
-unsigned long st_timestamp;
-
- void onlinepinchange(){
+#ifdef USEIRQ
+#ifdef ESP
+void ICACHE_RAM_ATTR onlinepinchange(){
+#else
+void onlinepinchange(){
+#endif
     if(recieving && bit_pos==0){
-      if( digitalRead(RECIEVE_PIN)){ //startbit
+//RISING/FALLING      if( digitalRead(RECIEVE_PIN)){ //startbit
         last_timestamp=millis();
         bit_pos++;
-
-      }
+//      }
     }
  }
-
+#endif
 void setup() {
   pinMode(RECIEVE_PIN, INPUT_PULLUP);
   pinMode(SEND_PIN, OUTPUT);
@@ -126,7 +134,7 @@ WiFi.begin(MYSSID, MYWIFIPASSWORD);
   PgmPrintln("");
   PgmPrint("My IP address: ");
   Serial.println(WiFi.localIP());
-
+  server.begin();
 #else
    if (Ethernet.begin(mac) == 0) {
     PgmPrintln("Failed to configure Ethernet using DHCP");
@@ -164,8 +172,9 @@ Serial.println();
 
   currentDigit=0;
   currentNumberPos=0;
-  attachInterrupt(digitalPinToInterrupt(RECIEVE_PIN), onlinepinchange, CHANGE);
-
+#ifdef USEIRQ
+  attachInterrupt(digitalPinToInterrupt(RECIEVE_PIN), onlinepinchange, RISING);//CHANGE);
+#endif
 }
 
 
@@ -334,9 +343,9 @@ case STATE_LOOKUP:
   }else{
 #ifdef _DEBUG
     PgmPrintln("nummer nicht gefunden");
-    PgmPrintln("STATE_RUHEZUSTAND");
+    PgmPrintln("STATE_BUSY");
 #endif
-    state=STATE_RUHEZUSTAND;
+    state=STATE_BUSY;
   }
 
 
@@ -368,29 +377,23 @@ case STATE_LOOKUP:
   }else{
 #ifdef _DEBUG
     PgmPrintln("connecting to remote failed");
+    PgmPrintln("STATE_BUSY");
 #endif
-    state=STATE_DISCONNECT;
+    state=STATE_BUSY;
   }
 
     break;
-    case STATE_ONLINE:
+
+
+
+    case STATE_BUSY: //ump=1, SSR=1, delay 2000 -> 0
       digitalWrite(COMMUTATE_PIN, HIGH);
-      if(!client.connected()){ // hat der client getrennt ?
-        client.stop();
-#ifdef _DEBUG
-        PgmPrintln("Client disconnected!");
-#endif
-        state=STATE_DISCONNECT;
-      }
-      if(!digitalRead(RECIEVE_PIN)){ // wollen wir trennen
-        st_timestamp=millis();
-      }else if(millis()>st_timestamp+3000){
-#ifdef _DEBUG
-        PgmPrintln("We want to disconnect!");
-#endif
-        state=STATE_DISCONNECT;
-      }
+      delay(200);
+      PgmPrintln("STATE_DISCONNECT");
+      state=STATE_DISCONNECT;
     break;
+
+    
 
     case STATE_LOCALMODE:
       if(!digitalRead(RECIEVE_PIN)){ // wollen wir trennen
@@ -417,18 +420,46 @@ case STATE_LOOKUP:
       delay(1000);
     break;
 
+
+      case STATE_ONLINE:
+      digitalWrite(COMMUTATE_PIN, HIGH);
+      if(!client.connected()){ // hat der client getrennt ?
+        client.stop();
+#ifdef _DEBUG
+        PgmPrintln("Client disconnected!");
+#endif
+        state=STATE_DISCONNECT;
+      }
+      if(!digitalRead(RECIEVE_PIN)){ // wollen wir trennen
+        st_timestamp=millis();
+      }else if(millis()>st_timestamp+3000){
+#ifdef _DEBUG
+        PgmPrintln("We want to disconnect!");
+#endif
+        state=STATE_DISCONNECT;
+      }
+   
+    break;
+
   }
 
-
-
-
-
+if(state==STATE_ONLINE || state==STATE_LOCALMODE){ // send and recieve tw-39
     if(bit_pos==0){
+#ifdef USEIRQ
       //wait for startbit (done in pinchangeinterrupt)
+#else
+    if(recieving){
+      if( digitalRead(RECIEVE_PIN)){ //startbit
+        last_timestamp=millis();
+        bit_pos++;
+      }
+    }
+#endif 
+      
     }else{
       unsigned long timestamp=millis();
       long diff=timestamp-last_timestamp;
-      if((bit_pos>0) && (bit_pos<6) && (diff>= (STARTBIT_DURATION+(DATABIT_DURATION*(bit_pos-1))+(DATABIT_DURATION*SAMPLEPOS/120)))){
+      if((bit_pos<6) && (diff>= (STARTBIT_DURATION+(DATABIT_DURATION*(bit_pos-1))+(DATABIT_DURATION*SAMPLEPOS/120)))){
 
 #ifdef _DEBUGTIMINGS
     Serial.print(bit_pos,DEC);
@@ -449,34 +480,51 @@ case STATE_LOOKUP:
        }else{
         recieve_buf=recieve_buf+1;
       }
-      if(bit_pos==6){
+     }
+      if(bit_pos==6 && (diff>= (STARTBIT_DURATION+DATABIT_DURATION*6))){
+#ifdef _DEBUGTIMINGS
+    Serial.print(bit_pos,DEC);
+    PgmPrint("\t");
+    Serial.print(last_timestamp,DEC);
+    PgmPrint("\t");
+    Serial.print(timestamp,DEC);
+    PgmPrint("\t");
+    Serial.print(diff,DEC);
+    PgmPrint("\t");
+    Serial.print((STARTBIT_DURATION+(DATABIT_DURATION*(bit_pos-1))+(DATABIT_DURATION*SAMPLEPOS/120)));
+    PgmPrint("\n");
+
+    Serial.println(recieved_char,BIN);
+#endif
         new_char_recieved=true;
         recieved_char=recieve_buf;
         recieve_buf=0;
         bit_pos=0;
-      }
+     }
     }
-    }
-
+}//send and recieve TW-39    
 
 
   if (new_char_recieved) {
     char c=baudotToAscii(recieved_char);
+//bit_pos=0;
 
 
-
-    if(client.connected()){
 #ifdef ITELEX
   if(c!=BAUDOT_CHAR_UNKNOWN && c!='\016' && c!='\017' &&c!=BAUDOT_MODE_BU && c!=BAUDOT_MODE_ZI && c!=0){
-    client.print(c);
+    if(client.connected()){
+      client.print(c);
+    }
     Serial.print(c);
   }
 #else
-  client.print(c);
-#endif
-    }
-    new_char_recieved=false;
+  if(client.connected()){
+      client.print(c);
   }
+  Serial.print(c);
+#endif
+  new_char_recieved=false;
+ }
 
 
    if (Serial.available() > 0) {

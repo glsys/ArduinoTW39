@@ -150,7 +150,7 @@ PgmPrintln("lookupTlnSrv");
     String IP="";
     if (tln_client.connect(tlnserver, 11811)) {
 #ifdef _DEBUG
-      PgmPrintln("connected");
+      PgmPrintln("connected to tln Server");
 #endif
       String query="q";
       query+=number;
@@ -249,7 +249,22 @@ PgmPrintln("");
 #endif
   return(false);
 }
-
+bool lookupHardcoded(String number){
+  PgmPrintln("lookupHardcoded");
+  if(number=="0"){
+    lookup_host="192.168.1.16";
+    lookup_port=134;
+    lookup_durchwahl=0;
+    return true;
+  }
+  if(number=="1"){
+    lookup_host="www.glsys.de";
+    lookup_port=134;
+    lookup_durchwahl=0;
+    return true;
+  }
+  return false;
+}
 
 bool lookupNumber(String number){
 #ifdef _DEBUG
@@ -259,6 +274,8 @@ bool lookupNumber(String number){
 #endif
 #ifdef USE_SDCARD  
   if(lookupSD(number)) return true;
+#else
+  if(lookupHardcoded(number)) return true;
 #endif
   return lookupTlnSrv(number);
 }
