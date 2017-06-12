@@ -8,23 +8,8 @@ More Information can be found at https://www.telexforum.de/viewtopic.php?f=29&t=
 SD-CARD
 ======= 
 
-If you want to use SD-Card Suport, the SD-Card should contain a folder pb 
-Inside this folder you can place a text file for each dialable numer that contains the same informations as the tnl-server response would:
-
-
-*781272.txt*
-```
-781272 <-- sicherheitshalber nochmal die gefundene Nummer
-Fred, Braunschweig T100 <-- Name (rein informativ)
-1 <-- Typ (siehe unten)
-sonnibs.no-ip.org <-- Adresse, hier kann auch eine IP in der Form 95.90.186.198 stehen
-134 <-- Port-Nummer
-33 <-- Durchwahl
-+++ <-- Ende-Kennzeichnung
-```
-
-
-But you can place arbitrary comments behind # signs:
+If you want to use SD-Card Suport, the SD-Card should contain a folder pb.
+Inside this folder you can place a text file for each dialable numer that contains the same informations as the tnl-server response would: (You can place arbitrary comments behind # signs)
 
 
 *0.txt*
