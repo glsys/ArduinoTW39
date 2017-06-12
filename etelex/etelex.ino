@@ -28,12 +28,13 @@ EthernetClient client;
 char tlnserver[] = TLN_SERVER;
 
 #ifdef ESP
-const byte COMMUTATE_PIN = 16; // umpol pin for the relais
-const byte RECIEVE_PIN = 13;     // recieve Pin when online
+const byte COMMUTATE_PIN = 5; // umpol pin for the relais
+const byte RECIEVE_PIN = 13;     // recieve Pin 
 const byte SEND_PIN = 12; // send pin for the Mosfet
+//const byte DEBUG_PIN = 4; // send pin for the Mosfet
 #else
 const byte COMMUTATE_PIN = 2; // umpol pin for the relais
-const byte RECIEVE_PIN = 3;     // recieve Pin when online
+const byte RECIEVE_PIN = 3;     // recieve Pin 
 const byte SEND_PIN = 5; // send pin for the Mosfet
 #endif
 
@@ -44,6 +45,7 @@ const int SAMPLEPOS=60; // 60 von 120
 
 byte state;
 
+//byte debug_toggle;
 
 #define STATE_RUHEZUSTAND  0 //4ma  ump=0, ssr=0
 #define STATE_ANFANGSSIGNAL  10 //4ma -> 40 ma -> opto==1 ca. 1000ms delay
@@ -98,9 +100,12 @@ void setup() {
   pinMode(RECIEVE_PIN, INPUT_PULLUP);
   pinMode(SEND_PIN, OUTPUT);
   pinMode(COMMUTATE_PIN, OUTPUT);
+//  pinMode(DEBUG_PIN, OUTPUT);
+  
 
   digitalWrite(SEND_PIN, LOW);
   digitalWrite(COMMUTATE_PIN, LOW);
+//  digitalWrite(DEBUG_PIN, LOW);
 
 
   Serial.begin(115200);
@@ -174,12 +179,25 @@ Serial.println();
   currentNumberPos=0;
 #ifdef USEIRQ
   attachInterrupt(digitalPinToInterrupt(RECIEVE_PIN), onlinepinchange, RISING);//CHANGE);
+#else
+  PgmPrint("no IRQ Version");
 #endif
 }
 
 
 
 void loop() {
+
+/*
+      if(debug_toggle){
+digitalWrite(DEBUG_PIN, HIGH);
+debug_toggle=0;
+       }else{
+digitalWrite(DEBUG_PIN, LOW);
+debug_toggle=1;
+      }
+*/  
+
   switch (state){
 
     case STATE_RUHEZUSTAND:
@@ -206,6 +224,7 @@ void loop() {
         state=STATE_ONLINE;
         digitalWrite(COMMUTATE_PIN, HIGH);
         delay(1000);
+        recieving=true;
       }
     break;
 
@@ -450,6 +469,7 @@ if(state==STATE_ONLINE || state==STATE_LOCALMODE){ // send and recieve tw-39
 #else
     if(recieving){
       if( digitalRead(RECIEVE_PIN)){ //startbit
+//         digitalWrite(DEBUG_PIN, HIGH);      
         last_timestamp=millis();
         bit_pos++;
       }
@@ -457,9 +477,15 @@ if(state==STATE_ONLINE || state==STATE_LOCALMODE){ // send and recieve tw-39
 #endif 
       
     }else{
+     
+  
       unsigned long timestamp=millis();
       long diff=timestamp-last_timestamp;
       if((bit_pos<6) && (diff>= (STARTBIT_DURATION+(DATABIT_DURATION*(bit_pos-1))+(DATABIT_DURATION*SAMPLEPOS/120)))){
+
+#ifdef ESP
+if(bit_pos==1)noInterrupts();
+#endif
 
 #ifdef _DEBUGTIMINGS
     Serial.print(bit_pos,DEC);
@@ -477,11 +503,23 @@ if(state==STATE_ONLINE || state==STATE_LOCALMODE){ // send and recieve tw-39
       recieve_buf=recieve_buf<<1;
       bit_pos++;
        if(digitalRead(RECIEVE_PIN)){
+//digitalWrite(DEBUG_PIN, HIGH);
        }else{
+//digitalWrite(DEBUG_PIN, LOW);
         recieve_buf=recieve_buf+1;
       }
+      if(bit_pos==6){
+        new_char_recieved=true;
+        recieved_char=recieve_buf;
+        recieve_buf=0;
+#ifdef ESP
+        interrupts();       
+#endif
+      }
+     
      }
       if(bit_pos==6 && (diff>= (STARTBIT_DURATION+DATABIT_DURATION*6))){
+//digitalWrite(DEBUG_PIN, LOW);
 #ifdef _DEBUGTIMINGS
     Serial.print(bit_pos,DEC);
     PgmPrint("\t");
@@ -496,9 +534,6 @@ if(state==STATE_ONLINE || state==STATE_LOCALMODE){ // send and recieve tw-39
 
     Serial.println(recieved_char,BIN);
 #endif
-        new_char_recieved=true;
-        recieved_char=recieve_buf;
-        recieve_buf=0;
         bit_pos=0;
      }
     }

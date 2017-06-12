@@ -20,7 +20,7 @@ String linebuffer;
 #ifdef USE_SDCARD
 bool lookupSD(String number){
 #ifdef _DEBUG
-  PgmPrintln("lookupTlnSrv");
+  PgmPrintln("lookup SD-Card");
 #endif
   pinMode(10, OUTPUT);                       // set the SS pin as an output (necessary!)
   digitalWrite(10, HIGH);                    // but turn off the W5100 chip!
@@ -146,7 +146,9 @@ File  myFile = SD.open(filename);
 */
 
 bool lookupTlnSrv(String number){
-PgmPrintln("lookupTlnSrv");
+#ifdef _DEBUG
+  PgmPrintln("lookupTlnSrv");
+#endif
     String IP="";
     if (tln_client.connect(tlnserver, 11811)) {
 #ifdef _DEBUG
