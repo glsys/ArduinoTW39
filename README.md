@@ -12,6 +12,8 @@ If you want to use SD-Card Suport, the SD-Card should contain a folder pb
 Inside this folder you can place a text file for each dialable numer that contains the same informations as the tnl-server response would:
 (everything between --start file-- and --end file-- markers, not including the markers)
 
+
+```
 --start file--
 781272 <-- sicherheitshalber nochmal die gefundene Nummer
 Fred, Braunschweig T100 <-- Name (rein informativ)
@@ -21,9 +23,13 @@ sonnibs.no-ip.org <-- Adresse, hier kann auch eine IP in der Form 95.90.186.198 
 33 <-- Durchwahl
 +++ <-- Ende-Kennzeichnung
 -- end file --
+```
+
 
 But you can place arbitrary comments behind # signs:
 
+
+```
 --start file--
 #ok
 #781272 <-- sicherheitshalber nochmal die gefundene Nummer
@@ -49,5 +55,6 @@ Lokaler Test# mit Kommentar
 0
 +++
 -- end file --
+```
 
 
