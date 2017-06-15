@@ -3,18 +3,21 @@
 
 #define MYPORT 134
 #define MYIPFALLBACK 192, 168, 1, 64
-#define MYMACADRESS 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+#define MYMACADRESS 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xFE //0xED
 #define TLN_SERVER "sonnibs.no-ip.org"
 
 #define MYSSID "Wondernet2"
-#define MYWIFIPASSWORD "xxxxxxxxxx"
+#define MYWIFIPASSWORD "xxx"
 #define MYHOSTNAME "etelex"
 
 
 #define _DEBUG
 #undef _DEBUGTIMINGS
+#undef _DEBUGSOCKETS
+
 #define ITELEX
 #define USEIRQ
+#define USETIMERIRQ
 
 
 #ifdef ESP8266
@@ -31,6 +34,10 @@
 
 #else // NOT ESP
 #include <Ethernet.h>
+#include <utility/w5100.h>
+#include <utility/socket.h>
+
+
 #define USE_SDCARD
 #endif
 

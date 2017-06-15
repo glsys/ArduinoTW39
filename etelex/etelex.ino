@@ -23,6 +23,7 @@ IPAddress ip(MYIPFALLBACK);
 // with the IP address and port of the server
 EthernetServer server(MYPORT);
 EthernetClient client;
+byte currentSocknum;
 #endif
 
 char tlnserver[] = TLN_SERVER;
@@ -67,8 +68,8 @@ byte currentNumberPos;
 #define NUMBER_BUFFER_LENGTH 30
 char number[NUMBER_BUFFER_LENGTH];
 
-byte recieve_buf; // recieve buffer
-byte recieved_char; //
+volatile byte recieve_buf; // recieve buffer
+volatile byte recieved_char; //
 
 
 boolean debugTimings=false;
@@ -155,6 +156,7 @@ WiFi.begin(MYSSID, MYWIFIPASSWORD);
     PgmPrint(".");
   }
 Serial.println();
+  server.begin();
 #endif
 
 
@@ -184,7 +186,36 @@ Serial.println();
 #endif
 }
 
-
+void storeMainSocket(){
+#ifndef ESP
+  for (int i = 0; i < MAX_SOCK_NUM; i++) {
+    uint8_t s = W5100.readSnSR(i);
+    if(s == 0x17) {
+      currentSocknum=i;
+    }
+  }
+#endif
+}
+void handleClientsWhileConnected(){ //check for new clients which try to connect while connection is already in progress
+#ifndef ESP
+  for (int i = 0; i < MAX_SOCK_NUM; i++) {
+    if(i!=currentSocknum){ //only the other ports
+      uint8_t s = W5100.readSnSR(i);
+      if(s == 0x17) { //connected -> disconnect
+        send(i,(unsigned char*)"occ\r\n",5);
+        disconnect(i);
+      }
+      if(s == 0x0) { // free -> listening
+        socket(i,SnMR::TCP,MYPORT,0);
+        listen(i);
+      }
+      if(s == 0x1C) { // disconnected -> free
+        close(i);
+      }
+    }
+  }
+#endif
+}
 
 void loop() {
 
@@ -221,6 +252,9 @@ debug_toggle=1;
 #ifdef _DEBUG
         PgmPrintln("server.available");
 #endif
+
+storeMainSocket();
+
         state=STATE_ONLINE;
         digitalWrite(COMMUTATE_PIN, HIGH);
         delay(1000);
@@ -378,6 +412,9 @@ case STATE_LOOKUP:
 #ifdef _DEBUG
     PgmPrintln("connected to remote");
 #endif
+
+storeMainSocket();
+
     if(lookup_durchwahl>0){
 #ifdef _DEBUG
       Serial.print('*');
@@ -413,13 +450,12 @@ case STATE_LOOKUP:
     break;
 
     
-
     case STATE_LOCALMODE:
       if(!digitalRead(RECIEVE_PIN)){ // wollen wir trennen
         st_timestamp=millis();
       }else if(millis()>st_timestamp+3000){
 #ifdef _DEBUG
-        PgmPrintln("We want to disconnect!");
+        PgmPrintln("We want to disconnect in localmode!");
 #endif
         state=STATE_DISCONNECT;
       }
@@ -442,6 +478,12 @@ case STATE_LOOKUP:
 
       case STATE_ONLINE:
       digitalWrite(COMMUTATE_PIN, HIGH);
+
+      handleClientsWhileConnected();//check for new clients which try to connect while connection is already in progress
+
+
+
+      
       if(!client.connected()){ // hat der client getrennt ?
         client.stop();
 #ifdef _DEBUG
@@ -449,6 +491,7 @@ case STATE_LOOKUP:
 #endif
         state=STATE_DISCONNECT;
       }
+
       if(!digitalRead(RECIEVE_PIN)){ // wollen wir trennen
         st_timestamp=millis();
       }else if(millis()>st_timestamp+3000){
@@ -457,10 +500,30 @@ case STATE_LOOKUP:
 #endif
         state=STATE_DISCONNECT;
       }
-   
     break;
 
   }
+
+
+
+
+#ifdef _DEBUGSOCKETS
+ for (int i = 0; i < MAX_SOCK_NUM; i++) {
+    uint8_t s = W5100.readSnSR(i);
+    Serial.print(s,HEX);
+    Serial.print("\t");
+ }
+
+Serial.print(currentSocknum);
+Serial.println();
+#endif
+
+
+
+
+
+
+
 
 if(state==STATE_ONLINE || state==STATE_LOCALMODE){ // send and recieve tw-39
     if(bit_pos==0){
@@ -567,7 +630,7 @@ if(bit_pos==1)noInterrupts();
         sendAsciiAsBaudot(Serial.read());
     }else{
       #ifdef _DEBUG
-      PgmPrintln("Disconnecting!");
+      
       PgmPrintln("STATE_LOCALMODE");
       #endif
       digitalWrite(COMMUTATE_PIN, HIGH);
