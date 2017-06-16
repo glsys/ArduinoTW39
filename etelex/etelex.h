@@ -3,9 +3,10 @@
 
 #define MYPORT 134
 #define MYIPFALLBACK 192, 168, 1, 64
-#define MYMACADRESS 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xFE //0xED
+#define MYMACADRESS 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED //MPIR D
+//#define MYMACADRESS 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xFE //0xED
 #define TLN_SERVER "sonnibs.no-ip.org"
-
+#define TLN_SERVER_PORT 11811
 #define MYSSID "Wondernet2"
 #define MYWIFIPASSWORD "xxx"
 #define MYHOSTNAME "etelex"
@@ -19,6 +20,8 @@
 #define USEIRQ
 #define USETIMERIRQ
 
+#define ST_DURATION 1000 // How long to hold down the ST key
+
 
 #ifdef ESP8266
 #define ESP
@@ -27,17 +30,10 @@
 
 #ifdef ESP
 #include <ESP8266WiFi.h>
-
-//const char* ssid = MYSSID;
-//const char* password = MYWIFIPASSWORD;
-
-
 #else // NOT ESP
 #include <Ethernet.h>
 #include <utility/w5100.h>
 #include <utility/socket.h>
-
-
 #define USE_SDCARD
 #endif
 

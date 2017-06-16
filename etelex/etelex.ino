@@ -4,15 +4,16 @@
 #include "lookup.h"
 
 
-// Enter a MAC address for your controller below.
-// Newer Ethernet shields have a MAC address printed on a sticker on the shield
-byte mac[] = { MYMACADRESS };
 
 
 #ifdef ESP
 WiFiServer server(MYPORT);
 WiFiClient client;
 #else
+// Enter a MAC address for your controller below.
+// Newer Ethernet shields have a MAC address printed on a sticker on the shield
+byte mac[] = { MYMACADRESS };
+
 //Set the static IP address to use if the DHCP fails to assign
 IPAddress ip(MYIPFALLBACK);
 // Initialize the Ethernet client library
@@ -22,13 +23,11 @@ EthernetClient client;
 byte currentSocknum;
 #endif
 
-char tlnserver[] = TLN_SERVER;
 
 #ifdef ESP
 const byte COMMUTATE_PIN = 5; // umpol pin for the relais
 const byte RECIEVE_PIN = 13;     // recieve Pin
 const byte SEND_PIN = 12; // send pin for the Mosfet
-//const byte DEBUG_PIN = 4; // send pin for the Mosfet
 #else
 const byte COMMUTATE_PIN = 2; // umpol pin for the relais
 const byte RECIEVE_PIN = 3;     // recieve Pin
@@ -42,7 +41,6 @@ const int SAMPLEPOS=60; // 60 von 120
 
 byte state;
 
-//byte debug_toggle;
 
 #define STATE_RUHEZUSTAND  0 //4ma  ump=0, ssr=0
 #define STATE_ANFANGSSIGNAL  10 //4ma -> 40 ma -> opto==1 ca. 1000ms delay
@@ -59,51 +57,47 @@ byte state;
 #define STATE_LOCALMODE   110
 
 #define STATE_DISCONNECT 200
+
 byte currentDigit;
 byte currentNumberPos;
-#define NUMBER_BUFFER_LENGTH 30
+#define NUMBER_BUFFER_LENGTH 20
 char number[NUMBER_BUFFER_LENGTH];
 
 volatile byte recieve_buf; // recieve buffer
 volatile byte recieved_char; //
 
-
-boolean debugTimings=false;
-boolean new_char_recieved=false;
+volatile boolean new_char_recieved=false;
 
 unsigned long st_timestamp;
 
 
-//unsigned long pin_val;
+
 volatile unsigned int bit_pos=0; // aktuelles bit in rcve, startbit=1
 volatile boolean recieving=false;
 volatile unsigned long last_timestamp;
 
 void byte_send(byte _byte) {
   recieving=false;
-//  state=STATE_SENDING;
-
 
   digitalWrite(SEND_PIN, HIGH);
   delay(STARTBIT_DURATION);
 
-
   for (int _bit = 4; _bit >= 0; _bit--) {
     digitalWrite(SEND_PIN, !bitRead(_byte, _bit));
     delay(DATABIT_DURATION);
-  } // end for loop
+  } 
 
   digitalWrite(SEND_PIN, LOW);
   delay(STOPBIT_DURATION);
 
   recieving=true;
-//  state=STATE_ONLINE;
 } // end byte_send()
+
 void sendAsciiAsBaudot(char ascii) {
   byte modeswtichcode;
   byte baudot = asciiToBaudot(ascii,&modeswtichcode);
 
-  if(baudot!=0){
+  if(baudot!=BAUDOT_CHAR_UNKNOWN){
     if(modeswtichcode!=BAUDOT_MODE_UNDEFINED){
       byte_send(modeswtichcode);
 #ifdef _DEBUG_2
@@ -138,12 +132,10 @@ void setup() {
   pinMode(RECIEVE_PIN, INPUT_PULLUP);
   pinMode(SEND_PIN, OUTPUT);
   pinMode(COMMUTATE_PIN, OUTPUT);
-//  pinMode(DEBUG_PIN, OUTPUT);
 
 
   digitalWrite(SEND_PIN, LOW);
   digitalWrite(COMMUTATE_PIN, LOW);
-//  digitalWrite(DEBUG_PIN, LOW);
 
 
   Serial.begin(115200);
@@ -166,10 +158,10 @@ void setup() {
   PgmPrintln("...starting Network");
 
 #ifdef ESP
-WiFi.mode(WIFI_STA);
-WiFi.hostname(MYHOSTNAME);      // DHCP Hostname (useful for finding device for static lease)
+  WiFi.mode(WIFI_STA);
+  WiFi.hostname(MYHOSTNAME);      // DHCP Hostname (useful for finding device for static lease)
 //WiFi.config(staticIP, gateway, subnet);  // (DNS not required)
-WiFi.begin(MYSSID, MYWIFIPASSWORD);
+  WiFi.begin(MYSSID, MYWIFIPASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     PgmPrint(".");
@@ -256,16 +248,6 @@ void handleClientsWhileConnected(){ //check for new clients which try to connect
 
 void loop() {
 
-/*
-      if(debug_toggle){
-digitalWrite(DEBUG_PIN, HIGH);
-debug_toggle=0;
-       }else{
-digitalWrite(DEBUG_PIN, LOW);
-debug_toggle=1;
-      }
-*/
-
   switch (state){
 
     case STATE_RUHEZUSTAND:
@@ -287,16 +269,15 @@ debug_toggle=1;
       client = server.available();
       if (client) {
 #ifdef _DEBUG
-        PgmPrintln("server.available");
+        PgmPrintln("client connecting!");
 #endif
-
-storeMainSocket();
+        storeMainSocket();  
 
         state=STATE_ONLINE;
         digitalWrite(COMMUTATE_PIN, HIGH);
         delay(1000);
         recieving=true;
-      }
+      }//end client connecting
     break;
 
     case STATE_ANFANGSSIGNAL:
@@ -352,13 +333,15 @@ storeMainSocket();
             currentDigit++;
             last_timestamp=millis();
             state=STATE_WARTE_AUF_NAECHSTEN_WAHLIMPULS;
-//            PgmPrintln("STATE_WARTE_AUF_NAECHSTEN_WAHLIMPULS");
+#ifdef _DEBUG
+            PgmPrintln("STATE_WARTE_AUF_NAECHSTEN_WAHLIMPULS");
+#endif
       }
       if(millis()>last_timestamp+30000){
             last_timestamp=millis();
             state=STATE_RUHEZUSTAND;
 #ifdef _DEBUG
-           PgmPrintln("Dial Start Timeout");
+           PgmPrintln("Timeout during dialimpulse");
            PgmPrintln("STATE_RUHEZUSTAND");
 #endif
       }
@@ -386,7 +369,7 @@ storeMainSocket();
               currentDigit=0;
             }
            number[currentNumberPos++]='0'+currentDigit;
-           if(currentNumberPos==NUMBER_BUFFER_LENGTH){
+           if(currentNumberPos>=NUMBER_BUFFER_LENGTH){
 #ifdef _DEBUG
              PgmPrintln("number to long!");
 #endif
@@ -426,7 +409,8 @@ case STATE_LOOKUP:
     Serial.print(lookup_port);
     PgmPrint("*");
     Serial.print(lookup_durchwahl);
-    PgmPrintln("*");
+    PgmPrint("t");
+    Serial.println(lookup_type);
     PgmPrintln("STATE_CONNECTING");
 #endif
   state=STATE_CONNECTING;
@@ -450,7 +434,7 @@ case STATE_LOOKUP:
     PgmPrintln("connected to remote");
 #endif
 
-storeMainSocket();
+    storeMainSocket();
 
     if(lookup_durchwahl>0){
 #ifdef _DEBUG
@@ -490,7 +474,7 @@ storeMainSocket();
     case STATE_LOCALMODE:
       if(!digitalRead(RECIEVE_PIN)){ // wollen wir trennen
         st_timestamp=millis();
-      }else if(millis()>st_timestamp+3000){
+      }else if(millis()>st_timestamp+ST_DURATION){
 #ifdef _DEBUG
         PgmPrintln("We want to disconnect in localmode!");
 #endif
@@ -531,7 +515,7 @@ storeMainSocket();
 
       if(!digitalRead(RECIEVE_PIN)){ // wollen wir trennen
         st_timestamp=millis();
-      }else if(millis()>st_timestamp+3000){
+      }else if(millis()>st_timestamp+ST_DURATION){
 #ifdef _DEBUG
         PgmPrintln("We want to disconnect!");
 #endif
@@ -539,7 +523,7 @@ storeMainSocket();
       }
     break;
 
-  }
+  }//END of switch 
 
 
 
@@ -561,24 +545,19 @@ Serial.println();
 
 
 
-
 if(state==STATE_ONLINE || state==STATE_LOCALMODE){ // send and recieve tw-39
-    if(bit_pos==0){
+    if(bit_pos==0){//wait for startbit
 #ifdef USEIRQ
-      //wait for startbit (done in pinchangeinterrupt)
+      //do nothing (done in pinchangeinterrupt)
 #else
-    if(recieving){
-      if( digitalRead(RECIEVE_PIN)){ //startbit
-//         digitalWrite(DEBUG_PIN, HIGH);
-        last_timestamp=millis();
-        bit_pos++;
+      if(recieving){
+        if( digitalRead(RECIEVE_PIN)){ //startbit
+          last_timestamp=millis();
+          bit_pos++;
+        }
       }
-    }
 #endif
-
-    }else{
-
-
+    }else{// we had the startbit and are now waiting for further bits
       unsigned long timestamp=millis();
       long diff=timestamp-last_timestamp;
       if((bit_pos<6) && (diff>= (STARTBIT_DURATION+(DATABIT_DURATION*(bit_pos-1))+(DATABIT_DURATION*SAMPLEPOS/120)))){
@@ -603,9 +582,7 @@ if(bit_pos==1)noInterrupts();
       recieve_buf=recieve_buf<<1;
       bit_pos++;
        if(digitalRead(RECIEVE_PIN)){
-//digitalWrite(DEBUG_PIN, HIGH);
        }else{
-//digitalWrite(DEBUG_PIN, LOW);
         recieve_buf=recieve_buf+1;
       }
       if(bit_pos==6){
@@ -618,7 +595,7 @@ if(bit_pos==1)noInterrupts();
       }
 
      }
-      if(bit_pos==6 && (diff>= (STARTBIT_DURATION+DATABIT_DURATION*6))){
+      if(bit_pos==6 && (diff>= (STARTBIT_DURATION+DATABIT_DURATION*6))){//1/3 stopbit to early to not miss anything
 //digitalWrite(DEBUG_PIN, LOW);
 #ifdef _DEBUGTIMINGS
     Serial.print(bit_pos,DEC);
@@ -667,7 +644,6 @@ if(bit_pos==1)noInterrupts();
         sendAsciiAsBaudot(Serial.read());
     }else{
       #ifdef _DEBUG
-
       PgmPrintln("STATE_LOCALMODE");
       #endif
       digitalWrite(COMMUTATE_PIN, HIGH);
@@ -679,6 +655,7 @@ if(bit_pos==1)noInterrupts();
 
   if (client.available()) {
         char c = client.read();
+        
         sendAsciiAsBaudot(c);
         Serial.print(c);
   }

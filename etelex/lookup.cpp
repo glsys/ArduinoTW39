@@ -14,7 +14,7 @@ EthernetClient tln_client;
 String lookup_host;
 int lookup_port;
 byte lookup_durchwahl;
-//char linebuffer[40];
+byte lookup_type;
 String linebuffer;
 
 #ifdef USE_SDCARD
@@ -24,8 +24,8 @@ bool lookupSD(String number){
 #endif
   pinMode(10, OUTPUT);                       // set the SS pin as an output (necessary!)
   digitalWrite(10, HIGH);                    // but turn off the W5100 chip!
-String filename="pb/"+number+".txt";
-File  myFile = SD.open(filename);
+  String filename="pb/"+number+".txt";
+  File  myFile = SD.open(filename);
   if (myFile) {
     int pos=0; 
     linebuffer="";
@@ -86,6 +86,7 @@ File  myFile = SD.open(filename);
               PgmPrint("Typ: ");
               Serial.println(linebuffer);
 #endif
+              lookup_type=linebuffer.toInt();
             }
             if(pos==4){
 #ifdef _DEBUG              
@@ -150,7 +151,7 @@ bool lookupTlnSrv(String number){
   PgmPrintln("lookupTlnSrv");
 #endif
     String IP="";
-    if (tln_client.connect(tlnserver, 11811)) {
+    if (tln_client.connect(TLN_SERVER, TLN_SERVER_PORT)) {
 #ifdef _DEBUG
       PgmPrintln("connected to tln Server");
 #endif
@@ -209,6 +210,7 @@ bool lookupTlnSrv(String number){
               PgmPrint("Typ: ");
               Serial.println(linebuffer);
 #endif
+              lookup_type=linebuffer.toInt();
             }
             if(pos==4){
 #ifdef _DEBUG
@@ -252,17 +254,21 @@ PgmPrintln("");
   return(false);
 }
 bool lookupHardcoded(String number){
+#ifdef _DEBUG
   PgmPrintln("lookupHardcoded");
+#endif
   if(number=="0"){
     lookup_host="192.168.1.16";
     lookup_port=134;
     lookup_durchwahl=0;
+    lookup_type=4;
     return true;
   }
   if(number=="1"){
     lookup_host="www.glsys.de";
     lookup_port=134;
     lookup_durchwahl=0;
+    lookup_type=3;
     return true;
   }
   return false;
@@ -288,7 +294,7 @@ bool lookupNumber(String number){
 
 
 #ifndef USE_SDCARD
- void SerialPrint_P(PGM_P str) {
+void SerialPrint_P(PGM_P str) {
   for (uint8_t c; (c = pgm_read_byte(str)); str++) Serial.write(c);
 }
  void SerialPrintln_P(PGM_P str) {
