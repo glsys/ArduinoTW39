@@ -1,11 +1,7 @@
 #include <Arduino.h>
 #include "etelex.h"
-
-
-
 #include "baudot.h"
 #include "lookup.h"
-#include "etelex.h"
 
 
 // Enter a MAC address for your controller below.
@@ -30,12 +26,12 @@ char tlnserver[] = TLN_SERVER;
 
 #ifdef ESP
 const byte COMMUTATE_PIN = 5; // umpol pin for the relais
-const byte RECIEVE_PIN = 13;     // recieve Pin 
+const byte RECIEVE_PIN = 13;     // recieve Pin
 const byte SEND_PIN = 12; // send pin for the Mosfet
 //const byte DEBUG_PIN = 4; // send pin for the Mosfet
 #else
 const byte COMMUTATE_PIN = 2; // umpol pin for the relais
-const byte RECIEVE_PIN = 3;     // recieve Pin 
+const byte RECIEVE_PIN = 3;     // recieve Pin
 const byte SEND_PIN = 5; // send pin for the Mosfet
 #endif
 
@@ -83,12 +79,53 @@ volatile unsigned int bit_pos=0; // aktuelles bit in rcve, startbit=1
 volatile boolean recieving=false;
 volatile unsigned long last_timestamp;
 
+void byte_send(byte _byte) {
+  recieving=false;
+//  state=STATE_SENDING;
+
+
+  digitalWrite(SEND_PIN, HIGH);
+  delay(STARTBIT_DURATION);
+
+
+  for (int _bit = 4; _bit >= 0; _bit--) {
+    digitalWrite(SEND_PIN, !bitRead(_byte, _bit));
+    delay(DATABIT_DURATION);
+  } // end for loop
+
+  digitalWrite(SEND_PIN, LOW);
+  delay(STOPBIT_DURATION);
+
+  recieving=true;
+//  state=STATE_ONLINE;
+} // end byte_send()
+void sendAsciiAsBaudot(char ascii) {
+  byte modeswtichcode;
+  byte baudot = asciiToBaudot(ascii,&modeswtichcode);
+
+  if(baudot!=0){
+    if(modeswtichcode!=BAUDOT_MODE_UNDEFINED){
+      byte_send(modeswtichcode);
+#ifdef _DEBUG_2
+      PgmPrint("Switching mode to ");
+      Serial.print(modeswtichcode);
+      PgmPrint("\n");
+#endif
+    }
+    byte_send(baudot);
+  }
+} // end char_send()
+
+
+
+
 #ifdef USEIRQ
 #ifdef ESP
 void ICACHE_RAM_ATTR onlinepinchange(){
 #else
 void onlinepinchange(){
 #endif
+
     if(recieving && bit_pos==0){
 //RISING/FALLING      if( digitalRead(RECIEVE_PIN)){ //startbit
         last_timestamp=millis();
@@ -102,7 +139,7 @@ void setup() {
   pinMode(SEND_PIN, OUTPUT);
   pinMode(COMMUTATE_PIN, OUTPUT);
 //  pinMode(DEBUG_PIN, OUTPUT);
-  
+
 
   digitalWrite(SEND_PIN, LOW);
   digitalWrite(COMMUTATE_PIN, LOW);
@@ -123,7 +160,7 @@ void setup() {
   }else{
     PgmPrintln("Success SD init.");
   }
-#endif 
+#endif
 
 
   PgmPrintln("...starting Network");
@@ -227,7 +264,7 @@ debug_toggle=0;
 digitalWrite(DEBUG_PIN, LOW);
 debug_toggle=1;
       }
-*/  
+*/
 
   switch (state){
 
@@ -449,7 +486,7 @@ storeMainSocket();
       state=STATE_DISCONNECT;
     break;
 
-    
+
     case STATE_LOCALMODE:
       if(!digitalRead(RECIEVE_PIN)){ // wollen wir trennen
         st_timestamp=millis();
@@ -461,8 +498,8 @@ storeMainSocket();
       }
     break;
 
-    
-    
+
+
     case STATE_DISCONNECT:
 #ifdef _DEBUG
       PgmPrintln("Disconnecting!");
@@ -483,7 +520,7 @@ storeMainSocket();
 
 
 
-      
+
       if(!client.connected()){ // hat der client getrennt ?
         client.stop();
 #ifdef _DEBUG
@@ -532,16 +569,16 @@ if(state==STATE_ONLINE || state==STATE_LOCALMODE){ // send and recieve tw-39
 #else
     if(recieving){
       if( digitalRead(RECIEVE_PIN)){ //startbit
-//         digitalWrite(DEBUG_PIN, HIGH);      
+//         digitalWrite(DEBUG_PIN, HIGH);
         last_timestamp=millis();
         bit_pos++;
       }
     }
-#endif 
-      
+#endif
+
     }else{
-     
-  
+
+
       unsigned long timestamp=millis();
       long diff=timestamp-last_timestamp;
       if((bit_pos<6) && (diff>= (STARTBIT_DURATION+(DATABIT_DURATION*(bit_pos-1))+(DATABIT_DURATION*SAMPLEPOS/120)))){
@@ -576,10 +613,10 @@ if(bit_pos==1)noInterrupts();
         recieved_char=recieve_buf;
         recieve_buf=0;
 #ifdef ESP
-        interrupts();       
+        interrupts();
 #endif
       }
-     
+
      }
       if(bit_pos==6 && (diff>= (STARTBIT_DURATION+DATABIT_DURATION*6))){
 //digitalWrite(DEBUG_PIN, LOW);
@@ -600,7 +637,7 @@ if(bit_pos==1)noInterrupts();
         bit_pos=0;
      }
     }
-}//send and recieve TW-39    
+}//send and recieve TW-39
 
 
   if (new_char_recieved) {
@@ -630,11 +667,11 @@ if(bit_pos==1)noInterrupts();
         sendAsciiAsBaudot(Serial.read());
     }else{
       #ifdef _DEBUG
-      
+
       PgmPrintln("STATE_LOCALMODE");
       #endif
       digitalWrite(COMMUTATE_PIN, HIGH);
-      delay(1000);      
+      delay(1000);
       state=STATE_LOCALMODE;
       recieving=true;
     }
@@ -649,41 +686,3 @@ if(bit_pos==1)noInterrupts();
   Ethernet.maintain();
 #endif
 }
-
-void sendAsciiAsBaudot(char ascii) {
-  byte modeswtichcode;
-  byte baudot = asciiToBaudot(ascii,&modeswtichcode);
-
-  if(baudot!=0){
-    if(modeswtichcode!=BAUDOT_MODE_UNDEFINED){
-      byte_send(modeswtichcode);
-#ifdef _DEBUG_2
-      PgmPrint("Switching mode to ");
-      Serial.print(modeswtichcode);
-      PgmPrint("\n");
-#endif
-    }
-    byte_send(baudot);
-  }
-} // end char_send()
-
-void byte_send(byte _byte) {
-  recieving=false;
-//  state=STATE_SENDING;
-
-
-  digitalWrite(SEND_PIN, HIGH);
-  delay(STARTBIT_DURATION);
-
-
-  for (int _bit = 4; _bit >= 0; _bit--) {
-    digitalWrite(SEND_PIN, !bitRead(_byte, _bit));
-    delay(DATABIT_DURATION);
-  } // end for loop
-
-  digitalWrite(SEND_PIN, LOW);
-  delay(STOPBIT_DURATION);
-
-  recieving=true;
-//  state=STATE_ONLINE;
-} // end byte_send()
