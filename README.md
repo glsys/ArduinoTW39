@@ -2,11 +2,17 @@
 A telex Interface for arduino with ethernetshield.
 
 The folder "etelex" contains/is the Arduino-Sketch.
+
+Inside it, the file etelex.h contains most of the options, you may want tu configure.
+
 More Information can be found at https://www.telexforum.de/viewtopic.php?f=29&t=589
 
+Hardware
+========
+Depending on the Hardware, you may need to connect an additional snubber in paralell to the output.
 
 SD-CARD
-======= 
+=======
 
 If you want to use SD-Card Suport, the SD-Card should contain a folder pb.
 Inside this folder you can place a text file for each dialable numer that contains the same informations as the tnl-server response would: (You can place arbitrary comments behind # signs)
@@ -38,5 +44,3 @@ Lokaler Test# mit Kommentar
 0
 +++
 ```
-
-

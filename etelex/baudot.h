@@ -18,7 +18,8 @@
  #define BAUDOT_CHAR_UNKNOWN 26
 #endif
 
-
+extern byte baudot_recieving_mode;
+extern byte baudot_sending_mode;
 extern char baudotToAscii(byte baudot);
 extern byte asciiToBaudot(char ascii,byte *modeswtichcode);
 

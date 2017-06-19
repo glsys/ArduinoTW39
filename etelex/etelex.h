@@ -23,8 +23,11 @@
 #define ST_DURATION 1000 // How long to hold down the ST key
 
 
+
 #ifdef ESP8266
 #define ESP
+#else
+#define ICACHE_RAM_ATTR
 #endif
 
 
@@ -54,4 +57,3 @@ extern  void SerialPrintln_P(PGM_P str);
 
 
 #endif
-

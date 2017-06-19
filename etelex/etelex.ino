@@ -85,7 +85,7 @@ void byte_send(byte _byte) {
   for (int _bit = 4; _bit >= 0; _bit--) {
     digitalWrite(SEND_PIN, !bitRead(_byte, _bit));
     delay(DATABIT_DURATION);
-  } 
+  }
 
   digitalWrite(SEND_PIN, LOW);
   delay(STOPBIT_DURATION);
@@ -128,6 +128,7 @@ void onlinepinchange(){
     }
  }
 #endif
+
 void setup() {
   pinMode(RECIEVE_PIN, INPUT_PULLUP);
   pinMode(SEND_PIN, OUTPUT);
@@ -251,6 +252,8 @@ void loop() {
   switch (state){
 
     case STATE_RUHEZUSTAND:
+      baudot_recieving_mode=BAUDOT_MODE_UNDEFINED;
+      baudot_sending_mode=BAUDOT_MODE_UNDEFINED;
       digitalWrite(SEND_PIN, LOW);
       digitalWrite(COMMUTATE_PIN, LOW);
       if(digitalRead(RECIEVE_PIN)==0){ // AT
@@ -271,7 +274,7 @@ void loop() {
 #ifdef _DEBUG
         PgmPrintln("client connecting!");
 #endif
-        storeMainSocket();  
+        storeMainSocket();
 
         state=STATE_ONLINE;
         digitalWrite(COMMUTATE_PIN, HIGH);
@@ -523,7 +526,7 @@ case STATE_LOOKUP:
       }
     break;
 
-  }//END of switch 
+  }//END of switch
 
 
 
@@ -655,7 +658,7 @@ if(bit_pos==1)noInterrupts();
 
   if (client.available()) {
         char c = client.read();
-        
+
         sendAsciiAsBaudot(c);
         Serial.print(c);
   }
