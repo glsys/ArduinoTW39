@@ -439,7 +439,7 @@ case STATE_LOOKUP:
 
     storeMainSocket();
 
-    if(lookup_durchwahl>0){
+//    if(lookup_durchwahl>0){
 #ifdef _DEBUG
       Serial.print('*');
       Serial.print(lookup_durchwahl);
@@ -449,7 +449,7 @@ case STATE_LOOKUP:
       client.print('*');
       client.print(lookup_durchwahl);
       client.print('*');
-    }
+//    }
     state=STATE_ONLINE;
     recieving=true;
     digitalWrite(COMMUTATE_PIN, HIGH);
